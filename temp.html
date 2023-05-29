@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <style>
+		canvas {
+			border: 1px solid black;
+		}
+		.content {
+			max-width: 500px;
+			margin: auto;
+		}
+	</style>
+  </head>
+  <body>
+    Click to add points
+    <canvas id="canvas" style="background: #fff; margin: 20px"></canvas>
+    <input type="file" id="fileInput", name="Load_Image">
+  </body>
+  <script>
+    var bw = innerWidth - 20,
+      bh = innerHeight - 20;
+    var cw = bw + p * 2 + 1,
+      ch = bh + p * 2 + 1;
+    var p = 10;
+
+    var activePoint,
+      cursor,
+      dragging = false;
+    const mouse = { x: 0, y: 0, button: 0, lx: 0, ly: 0, update: true };
+
+    const TEXT_OFFSET = 5;
+    const TEXT_COLOR = "#000";
+    const TEXT_SIZE = 16;
+    const FONT = "arial";
+    var img = new Image();
+
+    // canvas.width = bw;
+    // canvas.height = bh;
+    var ctx = canvas.getContext("2d");
+    function handleFileSelect(event) {
+			var file = event.target.files[0];
+			var reader = new FileReader();
+			reader.onload = function(event) {
+				img.onload = function() {
+					canvas.width = img.width;
+					canvas.height = img.height;
+					ctx.drawImage(img, 0, 0);
+				}
+				img.src = event.target.result;
+			}
+			reader.readAsDataURL(file);
+		}
+
+    function drawLineText(
+      p1,
+      p2,
+      text,
+      textOffset = TEXT_OFFSET,
+      textColor = TEXT_COLOR,
+      textSize = TEXT_SIZE,
+      font = FONT
+    ) {
+      var x = p1.x,
+        y = p1.y;
+      var nx = p2.x - x,
+        ny = p2.y - y,
+        len = (nx * nx + ny * ny) ** 0.5;
+      nx /= len;
+      ny /= len;
+      ctx.font = textSize + "px " + font;
+      ctx.textAlign = "center";
+      ctx.fillStyle = textColor;
+      if (nx < 0) {
+        ctx.textBaseline = "top";
+        x = p2.x;
+        y = p2.y;
+        nx = -nx;
+        ny = -ny;
+        textOffset = -textOffset;
+      } else {
+        ctx.textBaseline = "bottom";
+      }
+      len /= 2;
+      ctx.setTransform(nx, ny, -ny, nx, x, y);
+      ctx.fillText(text, len, -textOffset);
+    }
+
+    document.getElementById("fileInput").addEventListener("change", handleFileSelect);
+
+    // angle between p2-p1 and p2-p3
+    function drawAngleText(
+      p1,
+      p2,
+      p3,
+      textAngleOffset = TEXT_ANGLE_OFFSET,
+      textColor = TEXT_COLOR,
+      textSize = TEXT_SIZE,
+      font = FONT
+    ) {
+      var ang;
+      var x = p2.x,
+        y = p2.y;
+      var nx1 = p1.x - x,
+        ny1 = p1.y - y,
+        len1 = (nx1 * nx1 + ny1 * ny1) ** 0.5;
+      var nx2 = p3.x - x,
+        ny2 = p3.y - y,
+        len2 = (nx2 * nx2 + ny2 * ny2) ** 0.5;
+      nx1 /= len1;
+      ny1 /= len1;
+      nx2 /= len2;
+      ny2 /= len2;
+      const cross = nx1 * ny2 - ny1 * nx2;
+      const dot = nx1 * nx2 + ny1 * ny2;
+      if (dot < 0) {
+        ang =
+          cross < 0 ? -Math.PI - Math.asin(cross) : Math.PI - Math.asin(cross);
+      } else {
+        ang = Math.asin(cross);
+      }
+      const angDeg = Math.abs(ang * (180 / Math.PI)).toFixed(0) + DEG;
+      ctx.font = textSize + "px " + font;
+      ctx.fillStyle = textColor;
+      ctx.textBaseline = "middle";
+      const centerAngle = Math.atan2(ny1, nx1) + ang / 2;
+      const nx = Math.cos(centerAngle);
+      const ny = Math.sin(centerAngle);
+      if (nx < 0) {
+        ctx.textAlign = "right";
+        ctx.setTransform(-nx, -ny, ny, -nx, x, y);
+        textAngleOffset = -textAngleOffset;
+      } else {
+        ctx.textAlign = "left";
+        ctx.setTransform(nx, ny, -ny, nx, x, y);
+      }
+      ctx.fillText(angDeg, textAngleOffset, 0);
+    }
+
+    //---------------------------------------------
+    requestAnimationFrame(update);
+    function mouseEvents(e) {
+      const bounds = canvas.getBoundingClientRect();
+      mouse.x = e.pageX - bounds.left - scrollX;
+      mouse.y = e.pageY - bounds.top - scrollY;
+      mouse.button =
+        e.type === "mousedown"
+          ? true
+          : e.type === "mouseup"
+          ? false
+          : mouse.button;
+      mouse.update = true;
+    }
+    ["mousedown", "mouseup", "mousemove"].forEach((name) =>
+      document.addEventListener(name, mouseEvents)
+    );
+
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = "red";
+    const point = (x, y) => ({ x, y });
+    const poly = () => ({
+      points: [],
+      closed: false,
+      addPoint(p) {
+        this.points.push(point(p.x, p.y));
+      },
+      draw() {
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = "red";
+        ctx.fillStyle = "rgba(255, 0, 0, 0.3)";
+        ctx.beginPath();
+        for (const p of this.points) {
+          ctx.lineTo(p.x, p.y);
+        }
+        this.closed && ctx.closePath();
+        ctx.stroke();
+        this.closed && ctx.fill();
+
+        ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
+        ctx.strokeStyle = "rgba(0, 0, 0, 0.8)";
+        for (const p of this.points) {
+          ctx.beginPath();
+          ctx.moveTo(p.x + 10, p.y);
+          ctx.arc(p.x, p.y, 10, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+        }
+        
+        
+      },
+      closest(pos, dist = 8) {
+        var i = 0,
+          index = -1;
+        dist *= dist;
+        for (const p of this.points) {
+          var x = pos.x - p.x;
+          var y = pos.y - p.y;
+          var d2 = x * x + y * y;
+          if (d2 < dist) {
+            dist = d2;
+            index = i;
+          }
+          i++;
+        }
+        if (index > -1) {
+          return this.points[index];
+        }
+      },
+    });
+    const polygon = poly();
+    function drawCircle(pos, color = "black", size = 8) {
+      ctx.strokeStyle = color;
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y, size, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    function update() {
+      if (mouse.update) {
+        cursor = "crosshair";
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        if (!dragging) {
+          activePoint = polygon.closest(mouse);
+        }
+        if (activePoint === undefined && mouse.button) {
+          polygon.addPoint(mouse);
+          mouse.button = false;
+        } else if (activePoint) {
+          if (mouse.button) {
+            if (dragging) {
+              activePoint.x += mouse.x - mouse.lx;
+              activePoint.y += mouse.y - mouse.ly;
+            } else {
+              if (
+                !polygon.closed &&
+                polygon.points.length > 2 &&
+                activePoint === polygon.points[0]
+              ) {
+                polygon.closed = true;
+              }
+            //   dragging = true;
+            }
+          } else {
+            dragging = false;
+          }
+        }
+        polygon.draw();
+        if (activePoint) {
+          drawCircle(activePoint);
+          cursor = "move";
+        }
+        mouse.lx = mouse.x;
+        mouse.ly = mouse.y;
+        canvas.style.cursor = cursor;
+        mouse.update = false;
+      }
+      requestAnimationFrame(update);
+    }
+  </script>
+</html>

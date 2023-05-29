@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Load Image and Draw Bounding Box using Mouse</title>
+	<style>
+		canvas {
+			border: 1px solid black;
+		}
+		.content {
+			max-width: 500px;
+			margin: auto;
+		}
+	</style>
+</head>
+<body>
+	<div class="content">
+	<h1>Load Image and Draw Bounding Box using Mouse</h1>
+	<p>Click and drag on the canvas to draw a bounding box around an object in the image.</p>
+	<canvas id="canvas"></canvas>
+	<p id="test">sample data </p>
+	<input type="file" id="fileInput", name="Load_Image">
+    <p id="upperleft"></p>
+    <p id="lowerright"></p>
+	</div>
+	<script>
+		var canvas = document.getElementById("canvas");
+		var ctx = canvas.getContext("2d");
+		var isDrawing = false;
+		var startX, startY;
+		var currentX, currentY;
+		var img = new Image();
+
+		function handleFileSelect(event) {
+			var file = event.target.files[0];
+			console.log(file)
+			var reader = new FileReader();
+			reader.onload = function(event) {
+				img.onload = function() {
+					canvas.width = img.width;
+					canvas.height = img.height;
+					ctx.drawImage(img, 0, 0);
+				}
+				img.src = event.target.result;
+			}
+			reader.readAsDataURL(file);
+		}
+
+		function handleMouseDown(event) {
+			isDrawing = true;
+			startX = event.offsetX;
+			startY = event.offsetY;
+		}
+
+		function handleMouseMove(event) {
+			if (!isDrawing) {
+				return;
+			}
+			currentX = event.offsetX;
+			currentY = event.offsetY;
+			ctx.clearRect(0, 0, canvas.width, canvas.height);
+			ctx.drawImage(img, 0, 0);
+			ctx.beginPath();
+			ctx.rect(startX, startY, currentX - startX, currentY - startY);
+			ctx.lineWidth = 2;
+			ctx.strokeStyle = "red";
+			ctx.stroke();
+		}
+
+		function handleMouseUp(event) {
+			isDrawing = false;
+            document.getElementById("upperleft").textContent = "Upper Left : (" + startX +", "+ startY +")";
+            document.getElementById("lowerright").textContent = "Lower Right : (" + currentX +", "+ currentY +")";
+		}
+
+		document.getElementById("fileInput").addEventListener("change", handleFileSelect);
+		canvas.addEventListener("mousedown", handleMouseDown);
+		canvas.addEventListener("mousemove", handleMouseMove);
+		canvas.addEventListener("mouseup", handleMouseUp);
+
+	</script>
+</body>
+</html>

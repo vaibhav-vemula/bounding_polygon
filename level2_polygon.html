@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Load Image and Draw Polygons using Mouse</title>
+	<style>
+		canvas {
+			border: 1px solid black;
+		}
+
+	    .content {
+			max-width: 500px;
+			margin: auto;
+		}
+	</style>
+</head>
+<body>
+	<div class="content">
+	<h1>Load Image and Draw Polygons using Mouse</h1>
+	<p>Click to define each point of the polygon. Double-click to close the polygon.</p>
+	<canvas id="canvas"></canvas>
+	<input type="file" id="fileInput">
+	<p id="coordinates"></p>
+	</div>
+	<script>
+		var canvas = document.getElementById("canvas");
+		var ctx = canvas.getContext("2d");
+		var points = [];
+		var isDrawing = false;
+		var img = new Image();
+
+		function handleFileSelect(event) {
+			var file = event.target.files[0];
+			var reader = new FileReader();
+			reader.onload = function(event) {
+				img.onload = function() {
+					canvas.width = img.width;
+					canvas.height = img.height;
+					ctx.drawImage(img, 0, 0);
+				}
+				img.src = event.target.result;
+			}
+			reader.readAsDataURL(file);
+		}
+
+		function handleMouseDown(event) {
+			isDrawing = true;
+			points.push([event.offsetX, event.offsetY]);
+		}
+
+		function handleMouseUp(event) {
+			isDrawing = false;
+		}
+
+		function handleMouseClick(event) {
+			if (!isDrawing) {
+				return;
+			}
+			points.push([event.offsetX, event.offsetY]);
+			drawPolygon();
+		}
+
+		function handleMouseDoubleClick(event) {
+			if (!isDrawing) {
+				return;
+			}
+			// Close the polygon by connecting the last point to the first point
+			points.push(points[0]);
+			drawPolygon();
+			// Reset the points array for the next polygon
+			points = [];
+		}
+
+		function drawPolygon() {
+			ctx.clearRect(0, 0, canvas.width, canvas.height);
+			ctx.drawImage(img, 0, 0);
+			ctx.beginPath();
+			ctx.moveTo(points[0][0], points[0][1]);
+			for (var i = 1; i < points.length; i++) {
+				ctx.lineTo(points[i][0], points[i][1]);
+			}
+			ctx.closePath();
+			ctx.lineWidth = 2;
+			ctx.strokeStyle = "red";
+			ctx.stroke();
+		}
+
+		document.getElementById("fileInput").addEventListener("change", handleFileSelect);
+		canvas.addEventListener("mousedown", handleMouseDown);
+		canvas.addEventListener("mouseup", handleMouseUp);
+		canvas.addEventListener("click", handleMouseClick);
+		canvas.addEventListener("dblclick", handleMouseDoubleClick);
+	</script>
+</body>
+</html>
